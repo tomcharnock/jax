@@ -51,12 +51,31 @@ complex_dtypes = [np.dtype('complex64'), np.dtype('complex128')]
 all_dtypes = (bool_dtypes + signed_dtypes + unsigned_dtypes + float_dtypes +
               complex_dtypes)
 
-scalar_types = [jnp.bool_, jnp.int8, jnp.int16, jnp.int32, jnp.int64,
-                jnp.uint8, jnp.uint16, jnp.uint32, jnp.uint64,
-                jnp.bfloat16, jnp.float16, jnp.float32, jnp.float64,
-                jnp.complex64, jnp.complex128]
+scalar_types = [
+    jnp.bool_, jnp.int8, jnp.int16, jnp.int32, jnp.int64, jnp.uint8, jnp.uint16,
+    jnp.uint32, jnp.uint64, jnp.bfloat16, jnp.float16, jnp.float32, jnp.float64,
+    jnp.complex64, jnp.complex128, np.longlong, np.intc
+]
+
+_EXPECTED_CANONICALIZE_X64 = {value: value for value in scalar_types}
+
+_EXPECTED_CANONICALIZE_X32 = {value: value for value in scalar_types}
+_EXPECTED_CANONICALIZE_X32[np.int64] = np.int32
+_EXPECTED_CANONICALIZE_X32[np.uint64] = np.uint32
+_EXPECTED_CANONICALIZE_X32[np.float64] = np.float32
+_EXPECTED_CANONICALIZE_X32[np.complex128] = np.complex64
+_EXPECTED_CANONICALIZE_X32[np.longlong] = np.int32
+
 
 class DtypesTest(jtu.JaxTestCase):
+
+  def test_canonicalize_type(self):
+    expected = {
+        True: _EXPECTED_CANONICALIZE_X64,
+        False: _EXPECTED_CANONICALIZE_X32,
+    }
+    for in_dtype, expected_dtype in expected[FLAGS.jax_enable_x64].items():
+      self.assertEqual(dtypes.canonicalize_dtype(in_dtype), expected_dtype)
 
   @parameterized.named_parameters(
     {"testcase_name": "_type={}".format(type.__name__), "type": type,
@@ -139,8 +158,8 @@ class DtypesTest(jtu.JaxTestCase):
     for groups in [bool_dtypes + signed_dtypes + unsigned_dtypes,
                    np_float_dtypes + complex_dtypes]:
       for t1, t2 in itertools.combinations(groups, 2):
-          self.assertEqual(np.promote_types(t1, t2),
-                           dtypes.promote_types(t1, t2))
+        self.assertEqual(np.promote_types(t1, t2),
+                         dtypes.promote_types(t1, t2))
 
   def testScalarInstantiation(self):
     for t in [jnp.bool_, jnp.int32, jnp.bfloat16, jnp.float32, jnp.complex64]:
