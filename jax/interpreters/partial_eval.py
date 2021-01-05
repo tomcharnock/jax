@@ -897,12 +897,12 @@ def _move_to_front(lst: Sequence, to_move: Sequence[bool]) -> Sequence:
 
 
 class DynamicJaxprTracer(core.Tracer):
-  __slots__ = ['aval', 'line_info']
+  __slots__ = ['aval']
 
   def __init__(self, trace, aval, line_info=None):
     self._trace = trace
+    self._line_info = line_info
     self.aval = aval
-    self.line_info = line_info
 
   def full_lower(self):
     return self
@@ -936,7 +936,7 @@ class DynamicJaxprTracer(core.Tracer):
 
   def _assert_live(self) -> None:
     if not self._trace.main.jaxpr_stack:  # type: ignore
-      msg = f"tracer created on line {source_info_util.summarize(self.line_info)}"
+      msg = f"tracer created on line {source_info_util.summarize(self._line_info)}"
       raise core.escaped_tracer_error(msg)
 
 class JaxprStackFrame:
@@ -1031,8 +1031,8 @@ class DynamicJaxprTrace(core.Trace):
   def getvar(self, tracer):
     var = self.frame.tracer_to_var.get(id(tracer))
     if var is None:
-      if tracer.line_info is not None:
-        detail = f"tracer created on line {source_info_util.summarize(tracer.line_info)}"
+      if tracer._line_info is not None:
+        detail = f"tracer created on line {source_info_util.summarize(tracer._line_info)}"
       else:
         detail = None
       raise core.escaped_tracer_error(detail)
